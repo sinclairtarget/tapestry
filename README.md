@@ -6,9 +6,10 @@ terminal window.
 
 ## Features
 
-* Activate raw mode
+* Enable/disable raw mode
 * Clear and restore existing terminal text
+* Show/hide cursor
 * Display window size
 * Draw window border
+* Handle SIGWINCH
 * Print out characters as they are input
-* Hide cursor
