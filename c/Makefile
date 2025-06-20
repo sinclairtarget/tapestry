@@ -18,7 +18,7 @@ $(builddir):
 	mkdir -p $(builddir)
 
 main.o: term.h
-term.o: ansi.h
+term.o: escape.h
 
 .PHONY: clean
 clean:

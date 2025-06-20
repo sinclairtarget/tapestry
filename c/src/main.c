@@ -6,7 +6,7 @@
 #include <string.h>
 
 #include "term.h"
-#include "ansi.h"
+#include "escape.h"
 
 #define MAX_COLS 512
 #define CTRL(k) ((k) & 0x1f)
@@ -18,7 +18,9 @@ typedef struct {
     unsigned int last_input_key;
 } State;
 
-int need_window_update = 0;
+
+static int need_window_update = 0;
+static int allow_private = 0;
 
 
 void print_error(char* msg) {
@@ -35,6 +37,20 @@ void die(char* msg) {
 }
 
 void setup() {
+    if (allow_private) {
+        if (term_write(PRIVATE_SAVE_SCREEN, 6) != 0) {
+            die("Failed to write to terminal");
+        }
+
+        if (term_write(PRIVATE_SAVE_CURSOR, 2) != 0) {
+            die("Failed to write to terminal");
+        }
+
+        if (term_write(PRIVATE_HIDE_CURSOR, 6) != 0) {
+            die("Failed to write to terminal");
+        }
+    }
+
     if (term_enable_raw() != 0) {
         die("Failed to activate terminal raw mode");
     }
@@ -46,9 +62,23 @@ void setup() {
 
 // We don't want to call exit() in this function; we are already exiting
 void teardown() {
-    if (term_reset() != 0) {
-        print_error("Failed to reset terminal");
-        return;
+    if (allow_private) {
+        if (term_write(PRIVATE_SHOW_CURSOR, 6) != 0) {
+            print_error("Failed to write to terminal");
+            return;
+        }
+
+        if (term_write(PRIVATE_RESTORE_CURSOR, 2) != 0) {
+            die("Failed to write to terminal");
+        }
+
+        if (term_write(PRIVATE_RESTORE_SCREEN, 6) != 0) {
+            die("Failed to write to terminal");
+        }
+    } else {
+        if (term_reset() != 0) {
+            die("Failed to reset terminal");
+        }
     }
 
     if (term_disable_raw() != 0) {
@@ -98,7 +128,7 @@ void draw(State* state) {
             sprintf(line, "%d x %d", state->window_rows, state->window_cols);
         } else if (row == midrow - 1) {
             if (state->last_input_key == '\0') {
-                strcpy(line, ".");
+                strcpy(line, "-");
             } else if (iscntrl(state->last_input_key)) {
                 sprintf(line, "%d", state->last_input_key);
             } else {
@@ -170,7 +200,27 @@ void update(State* state, unsigned int key) {
     state->last_input_key = key;
 }
 
-int main() {
+void parse_args(int argc, char* argv[]) {
+    if (argc > 1) {
+        if (strcmp(argv[1], "--allow-private") == 0) {
+            allow_private = 1;
+        } else {
+            printf("Usage: %s [--allow-private]\n", argv[0]);
+            char buf[256];
+            snprintf(
+                buf, 
+                255, 
+                "Unrecognized command-line flag: \"%s\"", 
+                argv[1]
+            );
+            die(buf);
+        }
+    }
+}
+
+int main(int argc, char* argv[]) {
+    parse_args(argc, argv);
+
     setup();
     if (atexit(teardown) != 0) {
         die("Error registering exit handler");

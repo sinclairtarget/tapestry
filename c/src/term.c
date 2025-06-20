@@ -3,7 +3,7 @@
 #include <termios.h>
 #include <unistd.h>
 
-#include "ansi.h"
+#include "escape.h"
 
 static struct termios original_term_settings;
 

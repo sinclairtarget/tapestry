@@ -9,3 +9,4 @@ Features:
 * Display window size
 * Draw window border
 * Print out characters as they are input
+* Hide cursor
