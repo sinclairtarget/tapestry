@@ -1,6 +1,6 @@
 # Tapestry
-A demonstration of how to build raw-mode CLI programs that take up the whole
-terminal window.
+A demonstration of how to build raw-mode terminal applications that take up the
+whole terminal window.
 
 ![image](https://github.com/user-attachments/assets/73049117-028f-4545-93c8-0e0f967b2daa)
 
