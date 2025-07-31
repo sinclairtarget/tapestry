@@ -1,6 +1,5 @@
 use std::mem;
 
-use libc;
 use libc::termios as Termios;
 
 use crate::error::TapestryError;
@@ -33,7 +32,7 @@ pub fn get_dimensions() -> Result<(u16, u16), TapestryError> {
     };
 
     let result = unsafe {
-        libc::ioctl(libc::STDOUT_FILENO, libc::TIOCGWINSZ.into(), &mut size)
+        libc::ioctl(libc::STDOUT_FILENO, libc::TIOCGWINSZ, &mut size)
     };
     if result == -1 {
         return Err(TapestryError::new("ioctl() failed".to_string()));
@@ -72,7 +71,7 @@ fn enable_raw_mode() -> Result<Termios, TapestryError> {
         original
     };
 
-    let mut copy = original.clone();
+    let mut copy = original;
     copy.c_iflag &=
         !(libc::BRKINT | libc::ICRNL | libc::INPCK | libc::ISTRIP | libc::IXON);
     copy.c_oflag &= !libc::OPOST;

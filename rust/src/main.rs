@@ -90,7 +90,7 @@ fn draw(state: &State) -> Result<(), TapestryError> {
         }
 
         let left_padding = (usize::from(cols) - line.len() - 2) / 2;
-        let right_padding = (usize::from(cols) - line.len() - 2 + 1) / 2;
+        let right_padding = (usize::from(cols) - line.len() - 2).div_ceil(2);
         let repeat = usize::from(cols) - 2;
         if row == 0 {
             write!(&mut buf, "+{:-<repeat$}+\r\n", "")?;
