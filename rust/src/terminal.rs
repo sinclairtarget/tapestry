@@ -1,7 +1,7 @@
-use std::io;
+use std::mem;
 
 use libc;
-use nix::sys::termios;
+use libc::termios as Termios;
 
 use crate::error::TapestryError;
 use crate::escape;
@@ -43,7 +43,7 @@ pub fn get_dimensions() -> Result<(u16, u16), TapestryError> {
 }
 
 fn tear_down(
-    original: termios::Termios,
+    original: Termios,
     allow_private: bool,
 ) -> Result<(), TapestryError> {
     eprintln!("running terminal tear down");
@@ -61,43 +61,49 @@ fn tear_down(
     Ok(())
 }
 
-fn enable_raw_mode() -> Result<termios::Termios, TapestryError> {
-    let Ok(original) = termios::tcgetattr(io::stdout()) else {
-        return Err(TapestryError::new("tcgetattr() failed".to_string()));
+fn enable_raw_mode() -> Result<Termios, TapestryError> {
+    let original: Termios = unsafe {
+        let mut original = mem::zeroed();
+        let result = libc::tcgetattr(libc::STDOUT_FILENO, &mut original);
+        if result < 0 {
+            return Err(TapestryError::new("tcgetattr() failed".to_string()));
+        }
+
+        original
     };
 
     let mut copy = original.clone();
-    copy.input_flags &= !(termios::InputFlags::BRKINT
-        | termios::InputFlags::ICRNL
-        | termios::InputFlags::INPCK
-        | termios::InputFlags::ISTRIP
-        | termios::InputFlags::IXON);
-    copy.output_flags &= !termios::OutputFlags::OPOST;
-    copy.control_flags |= termios::ControlFlags::CS8;
-    copy.local_flags &= !(termios::LocalFlags::ECHO
-        | termios::LocalFlags::ICANON
-        | termios::LocalFlags::IEXTEN
-        | termios::LocalFlags::ISIG);
+    copy.c_iflag &=
+        !(libc::BRKINT | libc::ICRNL | libc::INPCK | libc::ISTRIP | libc::IXON);
+    copy.c_oflag &= !libc::OPOST;
+    copy.c_cflag |= libc::CS8;
+    copy.c_lflag &= !(libc::ECHO | libc::ICANON | libc::IEXTEN | libc::ISIG);
 
-    copy.control_chars[termios::SpecialCharacterIndices::VMIN as usize] = 0;
-    copy.control_chars[termios::SpecialCharacterIndices::VTIME as usize] = 1;
+    copy.c_cc[libc::VMIN] = 0; // min bytes read() nees to return
+    copy.c_cc[libc::VTIME] = 1; // max read() wait time in 10ths of a second
 
-    if let Err(_) =
-        termios::tcsetattr(io::stdout(), termios::SetArg::TCSADRAIN, &copy)
-    {
-        return Err(TapestryError::new("tcsetattr() failed".to_string()));
-    };
+    unsafe {
+        let result =
+            libc::tcsetattr(libc::STDOUT_FILENO, libc::TCSADRAIN, &copy);
+
+        if result < 0 {
+            return Err(TapestryError::new("tcsetattr() failed".to_string()));
+        }
+    }
 
     eprintln!("raw mode enabled");
     Ok(original)
 }
 
-fn disable_raw_mode(original: termios::Termios) -> Result<(), TapestryError> {
-    if let Err(_) =
-        termios::tcsetattr(io::stdout(), termios::SetArg::TCSADRAIN, &original)
-    {
-        return Err(TapestryError::new("tcsetattr() failed".to_string()));
-    };
+fn disable_raw_mode(original: Termios) -> Result<(), TapestryError> {
+    unsafe {
+        let result =
+            libc::tcsetattr(libc::STDOUT_FILENO, libc::TCSADRAIN, &original);
+
+        if result < 0 {
+            return Err(TapestryError::new("tcsetattr() failed".to_string()));
+        }
+    }
 
     eprintln!("raw mode disabled");
     Ok(())
