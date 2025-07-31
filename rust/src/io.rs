@@ -3,15 +3,8 @@ use std::io;
 use std::io::prelude::*;
 
 pub fn read_key(key: &mut u8) -> Result<usize, TapestryError> {
-    let mut n;
     let mut buf = [0; 1];
-    loop {
-        n = io::stdin().read(&mut buf)?;
-        if n > 0 {
-            break;
-        }
-    }
-
+    let n = io::stdin().read(&mut buf)?;
     *key = buf[0];
     Ok(n)
 }

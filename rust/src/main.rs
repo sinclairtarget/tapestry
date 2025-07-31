@@ -113,14 +113,18 @@ fn draw(state: &State) -> Result<(), TapestryError> {
     Ok(())
 }
 
-fn update(state: &mut State, key: u8) -> Result<bool, TapestryError> {
+fn update(
+    state: &mut State,
+    key: u8,
+    need_dimensions: bool,
+) -> Result<bool, TapestryError> {
     state.last_input_key = key;
     if state.last_input_key == ctrl(b'q') || state.last_input_key == ctrl(b'c')
     {
         return Ok(true);
     }
 
-    if signal::consume_sigwinch() {
+    if need_dimensions {
         let (rows, cols) = terminal::get_dimensions()?;
         state.window_rows = rows;
         state.window_cols = cols;
@@ -142,14 +146,21 @@ fn run(allow_private: bool) -> Result<(), TapestryError> {
         last_input_key: b'\0',
     };
 
-    loop {
-        draw(&state)?;
+    draw(&state)?; // Initial draw
 
-        io::read_key(&mut key)?;
-        let should_quit = update(&mut state, key)?;
+    loop {
+        let n_read = io::read_key(&mut key)?;
+        let need_dimensions = signal::consume_sigwinch();
+        if n_read == 0 && !need_dimensions {
+            continue; // Nothing has changed; no need to update screen
+        }
+
+        let should_quit = update(&mut state, key, need_dimensions)?;
         if should_quit {
             break;
         }
+
+        draw(&state)?;
     }
 
     tear_down()?;

@@ -34,4 +34,4 @@ fn handle_sigwinch() {
     unsafe {
         GOT_SIGWINCH = true;
     }
-} 
+}
