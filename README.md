@@ -1,6 +1,6 @@
 # Tapestry
-A demonstration of how to build raw-mode terminal applications that take up the
-whole terminal window in different languages.
+An example of how to build raw-mode terminal applications (on posix) in different
+languages.
 
 ![image](https://github.com/user-attachments/assets/73049117-028f-4545-93c8-0e0f967b2daa)
 
