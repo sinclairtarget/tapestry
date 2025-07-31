@@ -1,6 +1,7 @@
 mod error;
 mod escape;
 mod io;
+mod signal;
 mod terminal;
 
 use std::env;
@@ -112,20 +113,27 @@ fn draw(state: &State) -> Result<(), TapestryError> {
     Ok(())
 }
 
-fn update(state: &mut State, key: u8) -> bool {
+fn update(state: &mut State, key: u8) -> Result<bool, TapestryError> {
     state.last_input_key = key;
-
     if state.last_input_key == ctrl(b'q') || state.last_input_key == ctrl(b'c')
     {
-        return false;
+        return Ok(true);
     }
 
-    true
+    if signal::consume_sigwinch() {
+        let (rows, cols) = terminal::get_dimensions()?;
+        state.window_rows = rows;
+        state.window_cols = cols;
+    }
+
+    Ok(false)
 }
 
 fn run(allow_private: bool) -> Result<(), TapestryError> {
     let tear_down = terminal::set_up(allow_private)?;
     let (rows, cols) = terminal::get_dimensions()?;
+
+    signal::register_sigwinch_handler()?;
 
     let mut key: u8 = b'\0';
     let mut state: State = State {
@@ -138,7 +146,8 @@ fn run(allow_private: bool) -> Result<(), TapestryError> {
         draw(&state)?;
 
         io::read_key(&mut key)?;
-        if !update(&mut state, key) {
+        let should_quit = update(&mut state, key)?;
+        if should_quit {
             break;
         }
     }
