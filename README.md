@@ -1,6 +1,6 @@
 # Tapestry
 A demonstration of how to build raw-mode terminal applications that take up the
-whole terminal window.
+whole terminal window in different languages.
 
 ![image](https://github.com/user-attachments/assets/73049117-028f-4545-93c8-0e0f967b2daa)
 
@@ -11,5 +11,17 @@ whole terminal window.
 * Show/hide cursor
 * Display window size
 * Draw window border
-* Handle SIGWINCH
 * Print out characters as they are input
+* Handle SIGWINCH
+
+No dependencies other than libc.
+
+## Usage
+```
+$ ./tapestry
+```
+
+Or, if you want to enable "private mode" escape sequences:
+```
+$ ./tapestry --allow-private
+```
