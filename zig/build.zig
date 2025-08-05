@@ -1,8 +1,7 @@
 const std = @import("std");
 
-
 pub fn build(b: *std.Build) void {
-    const optimize_mode: std.builtin.OptimizeMode = switch(b.release_mode) {
+    const optimize_mode: std.builtin.OptimizeMode = switch (b.release_mode) {
         .off => .Debug,
         .any => .Debug,
         .fast => .ReleaseFast,

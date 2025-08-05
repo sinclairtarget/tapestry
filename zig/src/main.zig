@@ -6,7 +6,6 @@ const builtin = @import("builtin");
 
 const loop = @import("loop.zig");
 
-
 pub fn main() !void {
     // This is the actual allocator.
     var gpa_impl: std.heap.GeneralPurposeAllocator(.{}) = .init;
@@ -16,7 +15,7 @@ pub fn main() !void {
             die("{s}\n", .{"GPA detected leaks on exit"});
         }
     }
-    // This is the interface to the allocator with type std.mem.Allocator.
+    // This is the interface to the allocator, with type std.mem.Allocator.
     const gpa = gpa_impl.allocator();
 
     const allow_private = parse_args(gpa);
