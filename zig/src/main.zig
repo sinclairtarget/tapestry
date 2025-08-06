@@ -19,7 +19,7 @@ pub fn main() !void {
     const gpa = gpa_impl.allocator();
 
     const allow_private = parse_args(gpa);
-    loop.run(allow_private) catch |e| {
+    loop.run(gpa, allow_private) catch |e| {
         if (builtin.mode == .Debug) {
             return e;
         } else {

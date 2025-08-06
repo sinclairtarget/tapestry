@@ -48,6 +48,21 @@ pub fn read_key(key: *u8) !usize {
     return n_read;
 }
 
+pub fn get_dimensions() !struct { u16, u16 } {
+    var ws: std.c.winsize = undefined;
+    const result = std.c.ioctl(
+        std.io.getStdOut().handle,
+        c.TIOCGWINSZ,
+        &ws,
+    );
+    if (result < 0) {
+        std.log.err("{s}", .{"ioctl() failed"});
+        return error.IoctlError;
+    }
+
+    return .{ ws.row, ws.col };
+}
+
 fn reset() !void {
     try write(escape.erase_all);
     try write(escape.cursor_home);
