@@ -3,6 +3,7 @@ const Allocator = std.mem.Allocator;
 
 const escape = @import("escape.zig");
 const terminal = @import("terminal.zig");
+const signal = @import("signal.zig");
 
 const max_cols = 512;
 const State = struct {
@@ -34,18 +35,21 @@ pub fn run(gpa: Allocator, allow_private: bool) !void {
     defer arena_impl.deinit();
     const arena = arena_impl.allocator();
 
+    try signal.register_sigwinch_handler();
+
     try draw(arena, state); // Initial draw
     _ = arena_impl.reset(.retain_capacity);
 
     while (true) {
         var key: u8 = 0;
         const n_read = try terminal.read_key(&key);
-        if (n_read == 0) {
+        const need_dimensions = signal.consume_sigwinch();
+        if (n_read == 0 and !need_dimensions) {
             continue; // Nothing has changed; no need to update screen
             // Also, no need to reset arena!! We haven't used it
         }
 
-        const should_quit = try update(&state, key, false);
+        const should_quit = try update(&state, key, need_dimensions);
         if (should_quit) {
             break;
         }
@@ -147,6 +151,7 @@ fn update(state: *State, key: u8, need_dimensions: bool) !bool {
         const rows, const cols = try terminal.get_dimensions();
         state.rows = rows;
         state.cols = cols;
+        std.log.debug("Found dimensions: {d} x {d}", .{ rows, cols });
     }
 
     return false;
