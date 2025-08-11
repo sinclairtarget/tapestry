@@ -7,7 +7,7 @@ const builtin = @import("builtin");
 const loop = @import("loop.zig");
 
 pub fn main() !void {
-    // This is the actual allocator.
+    // This is the actual allocator, not the interface (see below).
     var gpa_impl: std.heap.GeneralPurposeAllocator(.{}) = .init;
     defer {
         const deinit_status = gpa_impl.deinit();

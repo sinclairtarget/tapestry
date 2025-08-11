@@ -4,7 +4,7 @@ const Allocator = std.mem.Allocator;
 const escape = @import("escape.zig");
 const terminal = @import("terminal.zig");
 
-const max_cols = 80;
+const max_cols = 512;
 const State = struct {
     last_input_key: u8,
     rows: u16,
@@ -27,7 +27,7 @@ pub fn run(gpa: Allocator, allow_private: bool) !void {
         .rows = rows,
         .cols = cols,
     };
-    std.log.debug("Found dimensions: {d} x {d}", .{rows, cols});
+    std.log.debug("Found dimensions: {d} x {d}", .{ rows, cols });
 
     // Our strategy is to only free memory at the end of every "frame"
     var arena_impl = std.heap.ArenaAllocator.init(gpa);
@@ -42,7 +42,7 @@ pub fn run(gpa: Allocator, allow_private: bool) !void {
         const n_read = try terminal.read_key(&key);
         if (n_read == 0) {
             continue; // Nothing has changed; no need to update screen
-                      // Also, no need to reset arena!! We haven't used it
+            // Also, no need to reset arena!! We haven't used it
         }
 
         const should_quit = try update(&state, key, false);
@@ -60,24 +60,40 @@ fn draw(arena: Allocator, state: State) !void {
 
     const rows = state.rows;
     const cols = if (state.cols > max_cols) max_cols else state.cols;
-    const midrow = cols / 2;
+    const midrow = rows / 2;
 
     const scratch: []u8 = try arena.alloc(u8, cols - 2); // Exclude border
-    const line: []u8 = try arena.alloc(u8, cols + 2); // for \r\n
+    const line_scratch: []u8 = try arena.alloc(u8, cols + 2); // for \r\n
     for (0..rows) |row| {
         try terminal.write(escape.erase_line);
 
         const content = blk: {
             if (row == midrow - 2) {
                 break :blk try std.fmt.bufPrint(
-                    scratch, 
-                    "{d} x {d}", 
-                    .{rows, cols},
+                    scratch,
+                    "{d} x {d}",
+                    .{ rows, cols },
                 );
+            } else if (row == midrow - 1) {
+                if (state.last_input_key == 0) {
+                    break :blk try std.fmt.bufPrint(scratch, "{s}", .{"-"});
+                } else if (std.ascii.isControl(state.last_input_key)) {
+                    break :blk try std.fmt.bufPrint(
+                        scratch,
+                        "{d}",
+                        .{state.last_input_key},
+                    );
+                } else {
+                    break :blk try std.fmt.bufPrint(
+                        scratch,
+                        "{0d} ('{0c}')",
+                        .{state.last_input_key},
+                    );
+                }
             } else if (row == midrow + 1) {
                 break :blk try std.fmt.bufPrint(
-                    scratch, 
-                    "{s}", 
+                    scratch,
+                    "{s}",
                     .{"Press ^c or ^q to quit."},
                 );
             } else {
@@ -85,18 +101,45 @@ fn draw(arena: Allocator, state: State) !void {
             }
         };
 
-        const written = try std.fmt.bufPrint(line, "|{s}|\r\n", .{content});
-        try terminal.write(written);
+        const line = blk: {
+            if (row == 0) {
+                break :blk try std.fmt.bufPrint(
+                    line_scratch,
+                    "+{[value]s:-^[width]}+\r\n",
+                    .{
+                        .value = "",
+                        .width = cols - 2,
+                    },
+                );
+            } else if (row < rows - 1) {
+                break :blk try std.fmt.bufPrint(
+                    line_scratch,
+                    "|{[value]s: ^[width]}|\r\n",
+                    .{
+                        .value = content,
+                        .width = cols - 2,
+                    },
+                );
+            } else {
+                break :blk try std.fmt.bufPrint(
+                    line_scratch,
+                    "+{[value]s:-^[width]}+",
+                    .{
+                        .value = "",
+                        .width = cols - 2,
+                    },
+                );
+            }
+        };
+
+        try terminal.write(line);
     }
 }
 
 fn update(state: *State, key: u8, need_dimensions: bool) !bool {
     state.last_input_key = key;
 
-    if (
-        state.last_input_key == ctrl('q') 
-        or state.last_input_key == ctrl('c')
-    ) {
+    if (state.last_input_key == ctrl('q') or state.last_input_key == ctrl('c')) {
         return true;
     }
 
